@@ -1,0 +1,7 @@
+{
+  "name": "GeoTrace AI",
+  "description": "An intelligent GPS trace visualizer and analyzer. Record or simulate GPS paths, visualize them on a map, and use Gemini to generate insights, travel journals, and terrain analysis.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
