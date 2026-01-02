@@ -1,35 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { 
-  Play, 
-  Square, 
-  MapPin, 
-  Activity, 
-  Sparkles, 
-  Navigation,
-  Trash2,
-  Wind,
-  Layers,
-  History,
-  Maximize2,
-  Upload,
-  Download,
-  FileDown,
-  FileUp,
-  TrendingUp,
-  Mountain,
-  Wifi,
-  WifiOff,
-  DownloadCloud,
-  HardDrive,
-  X,
-  Save,
-  Calendar,
-  ChevronRight,
-  Library,
-  AlertTriangle
-} from 'lucide-react';
 import { TraceMap } from './components/TraceMap';
 import { StatsChart } from './components/StatsChart';
+import { Sidebar } from './components/Sidebar';
+import { ControlPanel } from './components/ControlPanel';
+import { TraceLibrary } from './components/TraceLibrary';
+import { MetricsPanel } from './components/MetricsPanel';
+import { QuickMetricsOverlay } from './components/QuickMetricsOverlay';
+import { NotificationBanner } from './components/NotificationBanner';
 import { analyzeTrace } from './services/geminiService';
 import { offlineMapService } from './services/offlineMapService';
 import { traceStorageService } from './services/traceStorageService';
@@ -84,8 +61,6 @@ export default function App() {
   
   const watchIdRef = useRef<number | null>(null);
   const simulationIntervalRef = useRef<number | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const importTraceInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const handleOnline = () => {
@@ -159,7 +134,6 @@ export default function App() {
     setStats({
       totalDistance: Math.round(dist),
       duration: Math.round(durationSeconds),
-      // Only calculate average speed if duration is significant (>1s) to avoid infinity/massive spikes
       avgSpeed: durationSeconds > 1 ? parseFloat(((dist / durationSeconds) * 3.6).toFixed(1)) : 0,
       maxSpeed: parseFloat(maxS.toFixed(1)),
       elevationGain: Math.round(gain)
@@ -187,14 +161,12 @@ export default function App() {
       const timestamp = time ? new Date(time).getTime() : Date.now();
       let speed = 0;
 
-      // Calculate speed based on distance/time from previous point if available
-      // This populates speed for imported GPX files that lack it
       if (i > 0) {
         const prev = parsedCoords[i - 1];
         const dist = calculateDistance(prev.lat, prev.lng, lat, lng);
-        const timeDiff = (timestamp - prev.timestamp) / 1000; // seconds
+        const timeDiff = (timestamp - prev.timestamp) / 1000; 
         if (timeDiff > 0) {
-          speed = dist / timeDiff; // m/s
+          speed = dist / timeDiff; 
         }
       }
       
@@ -410,14 +382,6 @@ export default function App() {
     }
   };
 
-  const formatDistance = (m: number) => m >= 1000 ? `${(m / 1000).toFixed(2)} km` : `${m} m`;
-  const formatTime = (s: number) => {
-    const h = Math.floor(s / 3600);
-    const m = Math.floor((s % 3600) / 60);
-    const sec = Math.floor(s % 60);
-    return h > 0 ? `${h}h ${m}m` : `${m}m ${sec}s`;
-  };
-
   const isBannerVisible = !isOnline && !isOfflineBannerDismissed;
 
   // Calculate top offset for metrics based on visible banners
@@ -426,7 +390,6 @@ export default function App() {
     if (isBannerVisible) offset += 10;
     if (errorMessage) offset += 10;
     
-    // Return approximate tailwind classes based on combined height
     if (isBannerVisible && errorMessage) return 'top-28';
     if (isBannerVisible || errorMessage) return 'top-16';
     return 'top-4';
@@ -435,246 +398,37 @@ export default function App() {
   return (
     <div className="flex h-screen w-full bg-slate-50 font-sans text-slate-900 overflow-hidden relative">
       
-      {/* Sidebar Navigation */}
-      <aside className={`fixed md:relative z-[2000] h-full transition-all duration-300 ease-in-out shadow-2xl border-r border-slate-200 bg-white flex flex-col ${isSidebarOpen ? 'w-full md:w-[420px]' : 'w-0 -translate-x-full md:translate-x-0 md:w-0 overflow-hidden'}`}>
-        
-        <div className="p-8 bg-gradient-to-br from-slate-900 to-slate-800 text-white relative overflow-hidden">
-          <div className="relative z-10">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-500 rounded-xl shadow-lg shadow-blue-500/30">
-                  <Activity className="w-6 h-6 text-white" />
-                </div>
-                <h1 className="text-2xl font-black tracking-tighter">GEOTRACE AI</h1>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border ${isOnline ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-orange-500/10 text-orange-400 border-orange-500/20'}`}>
-                  {isOnline ? <Wifi className="w-2.5 h-2.5" /> : <WifiOff className="w-2.5 h-2.5" />}
-                  {isOnline ? 'Online' : 'Offline'}
-                </div>
-                <button 
-                  onClick={() => setIsSidebarOpen(false)}
-                  className="p-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors border border-white/10"
-                >
-                  <Maximize2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-            <p className="text-slate-400 text-sm leading-relaxed max-w-[280px]">
-              Visualizing the journey with intelligence.
-            </p>
-          </div>
-          <div className="absolute top-[-20%] right-[-10%] w-48 h-48 bg-blue-500/10 rounded-full blur-3xl"></div>
-        </div>
+      <Sidebar 
+        isOpen={isSidebarOpen} 
+        isOnline={isOnline} 
+        onClose={() => setIsSidebarOpen(false)}
+      >
+        <ControlPanel 
+          appState={appState}
+          onStartRecording={startRecording}
+          onStopRecording={stopRecording}
+          onStartSimulation={startSimulation}
+          onReset={() => {setCoordinates([]); setAnalysis(null); setAppState(AppState.IDLE);}}
+        />
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-hide">
-          
-          <section className="space-y-4">
-            <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest">Active Controls</h2>
-            <div className="grid grid-cols-1 gap-3">
-              {appState !== AppState.RECORDING && appState !== AppState.ANALYZING ? (
-                <button 
-                  onClick={startRecording}
-                  className="group flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-2xl font-bold transition-all hover:shadow-xl hover:shadow-blue-500/20 active:scale-95"
-                >
-                  <Play className="w-5 h-5 fill-current" />
-                  Record New Trace
-                </button>
-              ) : appState === AppState.ANALYZING ? (
-                <button 
-                  disabled
-                  className="flex items-center justify-center gap-3 bg-slate-200 text-slate-400 py-4 rounded-2xl font-bold transition-all"
-                >
-                  <Sparkles className="w-5 h-5 animate-spin" />
-                  Synthesizing Insights...
-                </button>
-              ) : (
-                <button 
-                  onClick={stopRecording}
-                  className="flex items-center justify-center gap-3 bg-slate-900 hover:bg-black text-white py-4 rounded-2xl font-bold transition-all shadow-lg active:scale-95"
-                >
-                  <Square className="w-5 h-5 fill-current" />
-                  Finish & Analyze
-                </button>
-              )}
+        <TraceLibrary 
+          savedTraces={savedTraces}
+          hasCoordinates={coordinates.length > 0}
+          isSaveModalOpen={isSaveModalOpen}
+          setIsSaveModalOpen={setIsSaveModalOpen}
+          traceName={traceName}
+          setTraceName={setTraceName}
+          onSaveTrace={handleSaveTrace}
+          onDeleteTrace={handleDeleteTrace}
+          onLoadTrace={handleLoadSavedTrace}
+          onLoadReferenceTrace={handleLoadSavedTraceAsReference}
+          onImportGPX={handleImportTrace}
+          onLoadReferenceLayer={handleFileUpload}
+          onExportGPX={exportToGPX}
+        />
 
-              <div className="grid grid-cols-2 gap-3">
-                <button 
-                  disabled={appState === AppState.RECORDING || appState === AppState.ANALYZING}
-                  onClick={startSimulation}
-                  className="flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl text-sm font-bold transition-colors disabled:opacity-50"
-                >
-                  <Wind className="w-4 h-4" />
-                  Simulate
-                </button>
-                <button 
-                  onClick={() => {setCoordinates([]); setAnalysis(null); setAppState(AppState.IDLE);}}
-                  className="flex items-center justify-center gap-2 bg-slate-100 hover:bg-red-50 text-slate-700 hover:text-red-600 py-3 rounded-xl text-sm font-bold transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Reset
-                </button>
-              </div>
-            </div>
-          </section>
-
-          <section className="space-y-4">
-             <div className="flex items-center justify-between">
-                <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                  <Library className="w-3.5 h-3.5" />
-                  Trace Library
-                </h2>
-                <div className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded-md text-[9px] font-bold">
-                  {savedTraces.length} Saved
-                </div>
-             </div>
-
-             <div className="p-5 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-4">
-                {/* Main Actions */}
-                <div className="grid grid-cols-1 gap-2">
-                  {/* Save Button with Inline Form */}
-                  {!isSaveModalOpen ? (
-                     <button 
-                      onClick={() => setIsSaveModalOpen(true)}
-                      disabled={coordinates.length === 0}
-                      className="w-full flex items-center justify-center gap-2 bg-blue-50 text-blue-600 hover:bg-blue-100 py-3 rounded-xl text-xs font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                     >
-                       <Save className="w-3.5 h-3.5" />
-                       Save Current Trace
-                     </button>
-                  ) : (
-                    <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-100 animate-in fade-in slide-in-from-top-2">
-                       <input 
-                         type="text" 
-                         value={traceName}
-                         onChange={(e) => setTraceName(e.target.value)}
-                         placeholder="Name your journey..."
-                         className="w-full text-xs p-2.5 rounded-lg border border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-2 bg-white"
-                         autoFocus
-                       />
-                       <div className="flex gap-2">
-                          <button 
-                            onClick={handleSaveTrace}
-                            disabled={!traceName.trim()}
-                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-xs font-bold transition-colors disabled:opacity-50"
-                          >
-                            Confirm
-                          </button>
-                          <button 
-                            onClick={() => setIsSaveModalOpen(false)}
-                            className="flex-1 bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 py-2 rounded-lg text-xs font-bold transition-colors"
-                          >
-                            Cancel
-                          </button>
-                       </div>
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <input type="file" accept=".gpx" className="hidden" ref={importTraceInputRef} onChange={handleImportTrace} />
-                    <button 
-                      onClick={() => importTraceInputRef.current?.click()}
-                      className="flex items-center justify-center gap-2 bg-slate-50 hover:bg-slate-100 text-slate-700 py-2.5 rounded-xl text-[10px] font-bold transition-all border border-slate-100"
-                    >
-                      <Upload className="w-3 h-3" />
-                      Import GPX
-                    </button>
-                    
-                    <button 
-                      onClick={exportToGPX}
-                      disabled={coordinates.length === 0}
-                      className="flex items-center justify-center gap-2 bg-slate-50 hover:bg-slate-100 text-slate-700 py-2.5 rounded-xl text-[10px] font-bold transition-all border border-slate-100 disabled:opacity-50"
-                    >
-                      <FileDown className="w-3 h-3" />
-                      Export GPX
-                    </button>
-                  </div>
-
-                  <input type="file" accept=".gpx" className="hidden" ref={fileInputRef} onChange={handleFileUpload} />
-                  <button 
-                    onClick={() => fileInputRef.current?.click()}
-                    className="w-full flex items-center justify-center gap-2 bg-white hover:bg-slate-50 text-slate-400 hover:text-slate-600 py-2 rounded-xl text-[10px] font-bold transition-all border border-dashed border-slate-200"
-                  >
-                    <Layers className="w-3 h-3" />
-                    Load Reference Layer
-                  </button>
-                </div>
-                
-                {/* Saved List */}
-                <div className="border-t border-slate-100 pt-3">
-                   <h3 className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-3">Saved Journeys</h3>
-                   {savedTraces.length === 0 ? (
-                     <div className="text-center py-6 text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                        <p className="text-[10px]">No saved traces yet.</p>
-                     </div>
-                   ) : (
-                     <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
-                        {savedTraces.map(trace => (
-                          <div 
-                            key={trace.id} 
-                            onClick={() => handleLoadSavedTrace(trace)}
-                            className="group flex items-center justify-between p-3 bg-slate-50 hover:bg-blue-50 rounded-xl border border-slate-100 hover:border-blue-100 transition-all cursor-pointer"
-                          >
-                             <div className="flex flex-col gap-0.5 overflow-hidden">
-                                <span className="text-[11px] font-bold text-slate-700 group-hover:text-blue-700 truncate">{trace.name}</span>
-                                <div className="flex items-center gap-2 text-[9px] text-slate-400 group-hover:text-blue-400">
-                                   <span className="flex items-center gap-1">
-                                     <Calendar className="w-2.5 h-2.5" />
-                                     {new Date(trace.createdAt).toLocaleDateString()}
-                                   </span>
-                                   <span>•</span>
-                                   <span>{formatDistance(trace.stats.totalDistance)}</span>
-                                </div>
-                             </div>
-                             
-                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-                                <button 
-                                  onClick={(e) => handleLoadSavedTraceAsReference(trace, e)}
-                                  className="p-2 text-slate-300 hover:text-blue-600 hover:bg-white rounded-lg transition-all"
-                                  title="Load as Reference Layer"
-                                >
-                                  <Layers className="w-3.5 h-3.5" />
-                                </button>
-                                <button 
-                                  onClick={(e) => handleDeleteTrace(trace.id, e)}
-                                  className="p-2 text-slate-300 hover:text-red-500 hover:bg-white rounded-lg transition-all"
-                                  title="Delete Trace"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                             </div>
-                          </div>
-                        ))}
-                     </div>
-                   )}
-                </div>
-             </div>
-          </section>
-
-          <section className="space-y-4">
-            <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest">Journey Metrics</h2>
-            <div className="grid grid-cols-2 gap-4">
-               {[
-                 { label: 'Distance', value: formatDistance(stats.totalDistance), icon: MapPin },
-                 { label: 'Time', value: formatTime(stats.duration), icon: History },
-                 { label: 'Avg Speed', value: `${stats.avgSpeed} km/h`, icon: Activity },
-                 { label: 'Gain', value: `${stats.elevationGain} m`, icon: Layers }
-               ].map((item, idx) => (
-                 <div key={idx} className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 hover:bg-white transition-colors">
-                   <div className="flex items-center gap-2 mb-2">
-                     <item.icon className="w-3 h-3 text-slate-400" />
-                     <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{item.label}</span>
-                   </div>
-                   <div className="text-lg font-black text-slate-800 tabular-nums">
-                     {item.value}
-                   </div>
-                 </div>
-               ))}
-            </div>
-          </section>
-        </div>
-      </aside>
+        <MetricsPanel stats={stats} />
+      </Sidebar>
 
       {/* Main Map Content */}
       <main className="flex-1 flex flex-col relative h-full group">
@@ -694,93 +448,23 @@ export default function App() {
             onClearCache={clearOfflineData}
           />
           
-          {/* Notification Banners Container */}
-          <div className="absolute top-0 left-0 right-0 z-[3000] flex flex-col items-stretch animate-in slide-in-from-top duration-300 pointer-events-none">
-            {/* Error Banner */}
-            {errorMessage && (
-              <div className="bg-red-600 text-white text-[10px] font-black uppercase tracking-[0.2em] px-8 py-3 shadow-xl flex items-center justify-between border-b border-red-500/30 backdrop-blur-xl pointer-events-auto">
-                 <div className="flex-1 flex justify-center items-center gap-3">
-                   <AlertTriangle className="w-4 h-4" />
-                   <span className="truncate max-w-[calc(100vw-100px)]">{errorMessage}</span>
-                 </div>
-                 <button 
-                  onClick={() => setErrorMessage(null)}
-                  className="hover:bg-black/10 p-1.5 rounded-full transition-colors ml-4"
-                  title="Dismiss Error"
-                 >
-                   <X className="w-4 h-4" />
-                 </button>
-               </div>
-            )}
+          <NotificationBanner 
+            errorMessage={errorMessage}
+            isOffline={isBannerVisible}
+            isOfflineDismissed={isOfflineBannerDismissed}
+            onDismissError={() => setErrorMessage(null)}
+            onDismissOffline={() => setIsOfflineBannerDismissed(true)}
+          />
 
-            {/* Offline Banner */}
-            {isBannerVisible && (
-               <div className="bg-orange-600 text-white text-[10px] font-black uppercase tracking-[0.2em] px-8 py-3 shadow-xl flex items-center justify-between border-b border-orange-500/30 backdrop-blur-xl pointer-events-auto">
-                 <div className="flex-1 flex justify-center items-center gap-3">
-                   <WifiOff className="w-4 h-4" />
-                   Offline Mode • Operating with Cached Map Data
-                 </div>
-                 <button 
-                  onClick={() => setIsOfflineBannerDismissed(true)}
-                  className="hover:bg-black/10 p-1.5 rounded-full transition-colors ml-4"
-                  title="Dismiss Offline Alert"
-                 >
-                   <X className="w-4 h-4" />
-                 </button>
-               </div>
-            )}
-          </div>
-
-          {/* QUICK METRICS OVERLAY - Position shifts based on visible banners */}
-          {(appState === AppState.RECORDING || (coordinates.length > 0 && !isSidebarOpen)) && (
-            <div 
-              className={`absolute left-6 z-[1000] flex flex-col gap-3 pointer-events-none transition-all duration-500 ${getMetricsTopClass()} ${isSidebarOpen ? 'opacity-0 -translate-x-4' : 'opacity-100 translate-x-0'}`}
-            >
-               <div className="bg-white/90 backdrop-blur-md px-5 py-4 rounded-3xl shadow-2xl border border-white/50 flex flex-col gap-4">
-                  <div className="flex items-center gap-4">
-                    {appState === AppState.RECORDING && (
-                      <>
-                        <div className="flex items-center justify-center">
-                          <div className="relative">
-                            <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-ping absolute"></div>
-                            <div className="w-2.5 h-2.5 bg-red-600 rounded-full relative"></div>
-                          </div>
-                        </div>
-                        <div className="w-[1px] h-8 bg-slate-200"></div>
-                      </>
-                    )}
-
-                    <div className="flex flex-col">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <TrendingUp className="w-3 h-3 text-blue-500" />
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Speed</span>
-                      </div>
-                      <span className="text-sm font-black text-slate-800 tabular-nums">
-                        {((coordinates[coordinates.length-1]?.speed || 0) * 3.6).toFixed(1)} <span className="text-[10px] text-slate-400 font-medium">km/h</span>
-                      </span>
-                    </div>
-                    <div className="w-[1px] h-8 bg-slate-200"></div>
-                    <div className="flex flex-col">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <Mountain className="w-3 h-3 text-emerald-500" />
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Altitude</span>
-                      </div>
-                      <span className="text-sm font-black text-slate-800 tabular-nums">
-                        {(coordinates[coordinates.length-1]?.alt || 0).toFixed(0)} <span className="text-[10px] text-slate-400 font-medium">m</span>
-                      </span>
-                    </div>
-                    <div className="w-[1px] h-8 bg-slate-200"></div>
-                    <div className="flex flex-col">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <Navigation className="w-3 h-3 text-emerald-500" />
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Distance</span>
-                      </div>
-                      <span className="text-sm font-black text-slate-800 tabular-nums">{formatDistance(stats.totalDistance)}</span>
-                    </div>
-                  </div>
-               </div>
-            </div>
-          )}
+          <QuickMetricsOverlay 
+            isVisible={appState === AppState.RECORDING || (coordinates.length > 0 && !isSidebarOpen)}
+            positionClass={getMetricsTopClass()}
+            isRecording={appState === AppState.RECORDING}
+            speed={coordinates[coordinates.length-1]?.speed || 0}
+            altitude={coordinates[coordinates.length-1]?.alt || 0}
+            distance={stats.totalDistance}
+            isSidebarOpen={isSidebarOpen}
+          />
           
           {/* Chart Overlay */}
           <div className={`absolute bottom-8 left-8 right-8 z-[1000] transition-all duration-500 ease-in-out transform ${coordinates.length > 2 ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 pointer-events-none'}`}>
