@@ -7,6 +7,7 @@ import { TraceLibrary } from './components/TraceLibrary';
 import { MetricsPanel } from './components/MetricsPanel';
 import { QuickMetricsOverlay } from './components/QuickMetricsOverlay';
 import { NotificationBanner } from './components/NotificationBanner';
+import { NavigationOverlay, NavigationState } from './components/NavigationOverlay';
 import { analyzeTrace } from './services/geminiService';
 import { offlineMapService } from './services/offlineMapService';
 import { traceStorageService } from './services/traceStorageService';
@@ -45,6 +46,15 @@ export default function App() {
   const [storageStats, setStorageStats] = useState({ count: 0, size: 0 });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
+  // Navigation State
+  const [navState, setNavState] = useState<NavigationState>({
+    isActive: false,
+    isOnTrack: true,
+    distanceToRoute: 0,
+    distanceToFinish: 0,
+    estimatedDuration: 0
+  });
+
   // Storage State
   const [savedTraces, setSavedTraces] = useState<SavedTrace[]>([]);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
@@ -89,6 +99,55 @@ export default function App() {
       clearInterval(interval);
     };
   }, []);
+
+  // Navigation Logic
+  useEffect(() => {
+    if (appState !== AppState.RECORDING || plannedPath.length === 0 || coordinates.length === 0) {
+      setNavState(prev => ({ ...prev, isActive: false }));
+      return;
+    }
+
+    const currentPos = coordinates[coordinates.length - 1];
+    
+    // Find nearest point on planned path
+    let minDistance = Infinity;
+    let closestIndex = -1;
+
+    // Linear search for closest point (efficient enough for typical GPX traces < 10k points)
+    for (let i = 0; i < plannedPath.length; i++) {
+      const d = calculateDistance(currentPos.lat, currentPos.lng, plannedPath[i].lat, plannedPath[i].lng);
+      if (d < minDistance) {
+        minDistance = d;
+        closestIndex = i;
+      }
+    }
+
+    // Calculate remaining distance from closest point to end
+    let remainingDistance = 0;
+    for (let i = closestIndex; i < plannedPath.length - 1; i++) {
+      remainingDistance += calculateDistance(
+        plannedPath[i].lat, plannedPath[i].lng,
+        plannedPath[i+1].lat, plannedPath[i+1].lng
+      );
+    }
+
+    // Determine if on track (threshold: 40 meters)
+    const isOnTrack = minDistance <= 40;
+    
+    // Estimate time based on current speed or average walking speed (5km/h ~ 1.4m/s)
+    const currentSpeed = currentPos.speed || 1.4;
+    const estimatedDuration = currentSpeed > 0.1 ? remainingDistance / currentSpeed : remainingDistance / 1.4;
+
+    setNavState({
+      isActive: true,
+      isOnTrack,
+      distanceToRoute: minDistance,
+      distanceToFinish: remainingDistance,
+      estimatedDuration
+    });
+
+  }, [coordinates, plannedPath, appState]);
+
 
   const loadSavedTraces = async () => {
     try {
@@ -466,15 +525,19 @@ export default function App() {
             isSidebarOpen={isSidebarOpen}
           />
           
-          {/* Chart Overlay */}
-          <div className={`absolute bottom-8 left-8 right-8 z-[1000] transition-all duration-500 ease-in-out transform ${coordinates.length > 2 ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 pointer-events-none'}`}>
-             <div className={`max-w-4xl mx-auto backdrop-blur-xl bg-white/80 rounded-[2rem] shadow-2xl border border-white/50 overflow-hidden transition-all duration-500 ${isChartCollapsed ? 'p-1.5 px-6' : 'p-6'}`}>
-               <StatsChart 
-                 data={coordinates} 
-                 isCollapsed={isChartCollapsed} 
-                 onToggleCollapse={() => setIsChartCollapsed(!isChartCollapsed)} 
-               />
-             </div>
+          {/* Bottom Panel Overlay: Shows Navigation Info OR Stats Chart */}
+          <div className={`absolute bottom-8 left-4 right-4 sm:left-8 sm:right-8 z-[1000] flex justify-center transition-all duration-500 ease-in-out transform ${navState.isActive || coordinates.length > 2 ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 pointer-events-none'}`}>
+             {navState.isActive ? (
+                <NavigationOverlay navState={navState} isVisible={true} />
+             ) : (
+                <div className={`w-full max-w-4xl backdrop-blur-xl bg-white/80 rounded-[2rem] shadow-2xl border border-white/50 overflow-hidden transition-all duration-500 ${isChartCollapsed ? 'p-1.5 px-6' : 'p-6'} pointer-events-auto`}>
+                   <StatsChart 
+                     data={coordinates} 
+                     isCollapsed={isChartCollapsed} 
+                     onToggleCollapse={() => setIsChartCollapsed(!isChartCollapsed)} 
+                   />
+                </div>
+             )}
           </div>
         </div>
       </main>
