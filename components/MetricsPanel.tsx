@@ -18,7 +18,7 @@ export const MetricsPanel: React.FC<MetricsPanelProps> = ({ stats }) => {
            { label: 'Avg Speed', value: `${stats.avgSpeed} km/h`, icon: Activity },
            { label: 'Gain', value: `${stats.elevationGain} m`, icon: Layers }
          ].map((item, idx) => (
-           <div key={idx} className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 hover:bg-white transition-colors">
+           <div key={idx} className="bg-slate-100 p-4 rounded-2xl border border-slate-100 hover:bg-white transition-colors">
              <div className="flex items-center gap-2 mb-2">
                <item.icon className="w-3 h-3 text-slate-400" />
                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{item.label}</span>
