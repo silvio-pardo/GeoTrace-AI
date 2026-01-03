@@ -365,7 +365,8 @@ export default function App() {
           lng: position.coords.longitude,
           alt: position.coords.altitude || 0,
           timestamp: position.timestamp,
-          speed: position.coords.speed || 0
+          speed: position.coords.speed || 0,
+          heading: position.coords.heading || null
         };
         setCoordinates(prev => [...prev, newCoord]);
       },
@@ -424,7 +425,8 @@ export default function App() {
         lng: currentLng,
         timestamp: Date.now(),
         speed: speed * 50000, 
-        alt: 10 + Math.random() * 5
+        alt: 10 + Math.random() * 5,
+        heading: (angle * 180 / Math.PI) // Simulate heading
       };
       setCoordinates(prev => [...prev, newCoord]);
     }, 1000);

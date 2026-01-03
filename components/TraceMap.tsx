@@ -7,7 +7,6 @@ import {
   Mountain, 
   Bike, 
   Moon, 
-  HeartPulse, 
   Layers, 
   Info,
   X,
@@ -17,7 +16,6 @@ import {
   PanelLeft,
   LocateFixed,
   DownloadCloud,
-  Tent,
   ExternalLink,
   TrainFront,
   Bus,
@@ -29,6 +27,7 @@ import {
 } from 'lucide-react';
 import { Coordinate, AIAnalysis } from '../types';
 import { offlineMapService } from '../services/offlineMapService';
+import { CompassOverlay } from './CompassOverlay';
 
 // Extend the TileLayer with caching capability
 const CachedTileLayer = ({ url, attribution, ...props }: any) => {
@@ -165,7 +164,37 @@ export const TraceMap: React.FC<TraceMapProps> = ({
   const [mapInstance, setMapInstance] = useState<L.Map | null>(null);
   const [cacheProgress, setCacheProgress] = useState<{current: number, total: number} | null>(null);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+  const [heading, setHeading] = useState<number>(0);
   
+  // Compass Logic
+  useEffect(() => {
+    const handleOrientation = (event: any) => {
+      let newHeading = 0;
+      if (event.webkitCompassHeading) {
+        newHeading = event.webkitCompassHeading;
+      } else if (event.alpha) {
+        newHeading = 360 - event.alpha;
+      }
+      setHeading(newHeading);
+    };
+
+    window.addEventListener('deviceorientation', handleOrientation);
+    return () => window.removeEventListener('deviceorientation', handleOrientation);
+  }, []);
+
+  // Sync compass with movement if recording/simulating and GPS heading is reliable
+  useEffect(() => {
+     if (isRecording && coordinates.length > 0) {
+        const last = coordinates[coordinates.length - 1];
+        if (last.heading !== undefined && last.heading !== null) {
+            // Prioritize GPS heading when moving significantly
+            if ((last.speed || 0) > 1) { 
+               setHeading(last.heading);
+            }
+        }
+     }
+  }, [coordinates, isRecording]);
+
   useEffect(() => {
     if (coordinates.length > 0) {
       const last = coordinates[coordinates.length - 1];
@@ -402,6 +431,11 @@ export const TraceMap: React.FC<TraceMapProps> = ({
           onClick={() => setActivePanel('none')}
         />
       )}
+      
+      {/* Compass Overlay - Top Left (Aligned with Right Toolbar) */}
+      <div className={`absolute ${toolbarTopClass} left-4 z-[1000] flex flex-col gap-2`}>
+         <CompassOverlay heading={heading} />
+      </div>
 
       {/* Right Toolbar - Only icons */}
       <div className={`absolute ${toolbarTopClass} right-4 sm:right-6 z-[1000] flex flex-col gap-2 bg-white/95 backdrop-blur-md p-1.5 rounded-2xl shadow-2xl border border-white/50 transition-all duration-500`}>
