@@ -28,6 +28,8 @@ import {
 import { Coordinate, AIAnalysis } from '../types';
 import { offlineMapService } from '../services/offlineMapService';
 import { CompassOverlay } from './CompassOverlay';
+import { Capacitor } from '@capacitor/core';
+import { Geolocation } from '@capacitor/geolocation';
 
 // Extend the TileLayer with caching capability
 const CachedTileLayer = ({ url, attribution, ...props }: any) => {
@@ -83,7 +85,7 @@ const endIcon = L.divIcon({
 
 const pulseIcon = L.divIcon({
   className: 'custom-pulse-icon',
-  html: `<div class="pulse-container"><div class="pulse-ring"></div><div class="pulse-dot"></div></div>`,
+  html: `<div class="relative w-5 h-5"><div class="absolute top-[-10px] left-[-10px] w-10 h-10 bg-blue-500 rounded-full opacity-60 animate-[pulse-ring_1.5s_cubic-bezier(0.215,0.61,0.355,1)_infinite]"></div><div class="absolute top-[3px] left-[3px] w-3.5 h-3.5 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.3)] border-2 border-white animate-[pulse-dot_1.5s_cubic-bezier(0.455,0.03,0.515,0.955)_-0.4s_infinite]"></div></div>`,
   iconSize: [20, 20],
   iconAnchor: [10, 10]
 });
@@ -224,32 +226,58 @@ export const TraceMap: React.FC<TraceMapProps> = ({
     });
   };
 
-  const centerOnLocation = () => {
+  const centerOnLocation = async () => {
     if (coordinates.length > 0) {
       const last = coordinates[coordinates.length - 1];
       if (mapInstance) {
         mapInstance.setView([last.lat, last.lng], 16, { animate: true });
       }
     } else {
-      if (!navigator.geolocation) {
-        onError("Geolocation is not supported by this browser.");
-        return;
+      // Check permissions first
+      if (Capacitor.isNativePlatform()) {
+        const permission = await Geolocation.checkPermissions();
+        if (permission.location !== 'granted') {
+          const request = await Geolocation.requestPermissions();
+          if (request.location !== 'granted') {
+            onError("Location permission denied");
+            return;
+          }
+        }
       }
 
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
+      if (Capacitor.isNativePlatform()) {
+        try {
+          const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 5000, maximumAge: 0 });
           const { latitude, longitude } = pos.coords;
           if (mapInstance) {
             mapInstance.setView([latitude, longitude], 16, { animate: true });
           }
           setUserLocation([latitude, longitude]);
-        },
-        (err) => {
-          console.error(`Geolocation failed (${err.code}): ${err.message}`);
-          onError(`Geolocation failed (${err.code}): ${err.message}`);
-        },
-        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-      );
+        } catch (err: any) {
+          console.error(`Geolocation failed: ${err.message}`);
+          onError(`Geolocation failed: ${err.message}`);
+        }
+      } else {
+        if (!navigator.geolocation) {
+          onError("Geolocation is not supported by this browser.");
+          return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const { latitude, longitude } = pos.coords;
+            if (mapInstance) {
+              mapInstance.setView([latitude, longitude], 16, { animate: true });
+            }
+            setUserLocation([latitude, longitude]);
+          },
+          (err) => {
+            console.error(`Geolocation failed (${err.code}): ${err.message}`);
+            onError(`Geolocation failed (${err.code}): ${err.message}`);
+          },
+          { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+        );
+      }
     }
   };
 
@@ -438,47 +466,47 @@ export const TraceMap: React.FC<TraceMapProps> = ({
       </div>
 
       {/* Right Toolbar - Only icons */}
-      <div className={`absolute ${toolbarTopClass} right-4 sm:right-6 z-[1000] flex flex-col gap-2 bg-white/95 backdrop-blur-md p-1.5 rounded-2xl shadow-2xl border border-white/50 transition-all duration-500`}>
-        <button onClick={onToggleSidebar} className={`p-3 rounded-xl transition-all active:scale-90 ${isSidebarOpen ? 'bg-slate-100 text-slate-800' : 'hover:bg-blue-50 text-blue-600'}`}>
+      <div className={`absolute ${toolbarTopClass} right-4 sm:right-6 z-[1000] flex flex-col gap-2 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-1.5 rounded-2xl shadow-2xl border border-white/50 dark:border-slate-700/50 transition-all duration-500`}>
+        <button onClick={onToggleSidebar} className={`p-3 rounded-xl transition-all active:scale-90 ${isSidebarOpen ? 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200' : 'hover:bg-blue-50 dark:hover:bg-slate-800 text-blue-600 dark:text-blue-400'}`}>
           <PanelLeft className={`w-5 h-5 transition-transform duration-300 ${isSidebarOpen ? 'rotate-180' : 'rotate-0'}`} />
         </button>
 
-        <div className="h-[1px] bg-slate-200 mx-2 my-1" />
+        <div className="h-[1px] bg-slate-200 dark:bg-slate-700 mx-2 my-1" />
 
-        <button onClick={centerOnLocation} className="p-3 rounded-xl hover:bg-blue-50 text-blue-600 transition-all active:scale-90" title="Locate Me">
+        <button onClick={centerOnLocation} className="p-3 rounded-xl hover:bg-blue-50 dark:hover:bg-slate-800 text-blue-600 dark:text-blue-400 transition-all active:scale-90" title="Locate Me">
           <LocateFixed className="w-5 h-5" />
         </button>
 
         {(coordinates.length > 0 || userLocation) && (
-          <button onClick={openInGoogleMaps} className="p-3 rounded-xl hover:bg-slate-100 text-slate-500 transition-all active:scale-90" title="Open in Google Maps">
+          <button onClick={openInGoogleMaps} className="p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-all active:scale-90" title="Open in Google Maps">
             <ExternalLink className="w-5 h-5" />
           </button>
         )}
 
-        <button onClick={handleZoomIn} className="p-3 rounded-xl hover:bg-slate-100 text-slate-600 transition-all active:scale-90" title="Zoom In">
+        <button onClick={handleZoomIn} className="p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-all active:scale-90" title="Zoom In">
           <Plus className="w-5 h-5" />
         </button>
-        <button onClick={handleZoomOut} className="p-3 rounded-xl hover:bg-slate-100 text-slate-600 transition-all active:scale-90" title="Zoom Out">
+        <button onClick={handleZoomOut} className="p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-all active:scale-90" title="Zoom Out">
           <Minus className="w-5 h-5" />
         </button>
 
-        <div className="h-[1px] bg-slate-200 mx-2 my-1" />
+        <div className="h-[1px] bg-slate-200 dark:bg-slate-700 mx-2 my-1" />
 
         {analysis && (
-          <button onClick={() => togglePanel('analysis')} className={`p-3 rounded-xl transition-all relative ${activePanel === 'analysis' ? 'bg-purple-600 text-white' : 'hover:bg-purple-50 text-purple-600'}`}>
+          <button onClick={() => togglePanel('analysis')} className={`p-3 rounded-xl transition-all relative ${activePanel === 'analysis' ? 'bg-purple-600 text-white' : 'hover:bg-purple-50 dark:hover:bg-purple-900/30 text-purple-600 dark:text-purple-400'}`}>
             <Sparkles className="w-5 h-5" />
           </button>
         )}
 
-        <button onClick={() => togglePanel('layers')} className={`p-3 rounded-xl transition-all ${activePanel === 'layers' ? 'bg-blue-600 text-white' : 'hover:bg-slate-100 text-slate-600'}`}>
+        <button onClick={() => togglePanel('layers')} className={`p-3 rounded-xl transition-all ${activePanel === 'layers' ? 'bg-blue-600 text-white' : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>
           <Layers className="w-5 h-5" />
         </button>
         
-        <button onClick={() => togglePanel('legend')} className={`p-3 rounded-xl transition-all ${activePanel === 'legend' ? 'bg-indigo-600 text-white' : 'hover:bg-indigo-50 text-indigo-600'}`}>
+        <button onClick={() => togglePanel('legend')} className={`p-3 rounded-xl transition-all ${activePanel === 'legend' ? 'bg-indigo-600 text-white' : 'hover:bg-indigo-50 dark:hover:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'}`}>
           <Info className="w-5 h-5" />
         </button>
 
-        <button onClick={() => togglePanel('offline')} className={`p-3 rounded-xl transition-all ${activePanel === 'offline' ? 'bg-amber-600 text-white' : 'hover:bg-amber-50 text-amber-600'}`} title="Offline Controls">
+        <button onClick={() => togglePanel('offline')} className={`p-3 rounded-xl transition-all ${activePanel === 'offline' ? 'bg-amber-600 text-white' : 'hover:bg-amber-50 dark:hover:bg-amber-900/30 text-amber-600 dark:text-amber-400'}`} title="Offline Controls">
           <DownloadCloud className="w-5 h-5" />
         </button>
       </div>
@@ -487,18 +515,18 @@ export const TraceMap: React.FC<TraceMapProps> = ({
       <div className={`absolute ${panelBottomClass} right-20 sm:right-32 z-[1050] w-full max-w-[calc(100vw-6rem)] sm:max-w-md transition-all duration-500 pointer-events-none`}>
         <div className="pointer-events-auto flex flex-col items-end gap-4">
           {activePanel === 'offline' && (
-             <div className="bg-white/95 backdrop-blur-2xl p-6 rounded-[2.5rem] shadow-2xl border border-amber-100 w-full animate-in slide-in-from-bottom-4 duration-300">
-               <div className="flex items-center justify-between mb-4 border-b border-amber-50 pb-3">
+             <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl p-6 rounded-[2.5rem] shadow-2xl border border-amber-100 dark:border-amber-900/30 w-full animate-in slide-in-from-bottom-4 duration-300">
+               <div className="flex items-center justify-between mb-4 border-b border-amber-50 dark:border-amber-900/20 pb-3">
                  <div className="flex items-center gap-2">
-                   <DownloadCloud className="w-4 h-4 text-amber-600" />
-                   <h4 className="text-[10px] font-black text-amber-600 uppercase tracking-widest">Offline Manager</h4>
+                   <DownloadCloud className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                   <h4 className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">Offline Manager</h4>
                  </div>
-                 <button onClick={() => setActivePanel('none')} className="text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 transition-colors">
+                 <button onClick={() => setActivePanel('none')} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                     <X className="w-4 h-4" />
                  </button>
                </div>
                <div className="space-y-4">
-                  <p className="text-[10px] text-slate-500 font-bold leading-relaxed">
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold leading-relaxed">
                     Caching tiles allows map navigation without an internet connection. Viewed areas are saved automatically.
                   </p>
                   <button 
@@ -509,27 +537,27 @@ export const TraceMap: React.FC<TraceMapProps> = ({
                     Cache Current Area
                   </button>
 
-                  <div className="mt-2 pt-4 border-t border-amber-100">
+                  <div className="mt-2 pt-4 border-t border-amber-100 dark:border-amber-900/20">
                     <div className="flex items-center gap-2 mb-3">
-                      <HardDrive className="w-3 h-3 text-amber-600" />
-                      <h5 className="text-[9px] font-black text-amber-600 uppercase tracking-widest">Storage Status</h5>
+                      <HardDrive className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                      <h5 className="text-[9px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">Storage Status</h5>
                     </div>
                     
                     <div className="grid grid-cols-2 gap-3 mb-4">
-                      <div className="bg-amber-50 p-3 rounded-xl border border-amber-100">
-                        <span className="block text-xl font-black text-amber-900">{storageStats.count}</span>
-                        <span className="text-[9px] font-bold text-amber-600 uppercase">Tiles Cached</span>
+                      <div className="bg-amber-50 dark:bg-amber-900/10 p-3 rounded-xl border border-amber-100 dark:border-amber-900/20">
+                        <span className="block text-xl font-black text-amber-900 dark:text-amber-100">{storageStats.count}</span>
+                        <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 uppercase">Tiles Cached</span>
                       </div>
-                      <div className="bg-amber-50 p-3 rounded-xl border border-amber-100">
-                        <span className="block text-xl font-black text-amber-900">{formatSize(storageStats.size)}</span>
-                        <span className="text-[9px] font-bold text-amber-600 uppercase">Total Size</span>
+                      <div className="bg-amber-50 dark:bg-amber-900/10 p-3 rounded-xl border border-amber-100 dark:border-amber-900/20">
+                        <span className="block text-xl font-black text-amber-900 dark:text-amber-100">{formatSize(storageStats.size)}</span>
+                        <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 uppercase">Total Size</span>
                       </div>
                     </div>
 
                     <button 
                       onClick={onClearCache}
                       disabled={storageStats.count === 0}
-                      className="w-full flex items-center justify-center gap-2 bg-white hover:bg-red-50 text-slate-400 hover:text-red-600 border border-slate-200 hover:border-red-200 py-3 rounded-xl text-[10px] font-bold transition-all disabled:opacity-50"
+                      className="w-full flex items-center justify-center gap-2 bg-white dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 border border-slate-200 dark:border-slate-700 hover:border-red-200 dark:hover:border-red-800 py-3 rounded-xl text-[10px] font-bold transition-all disabled:opacity-50"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                       Clear Offline Storage
@@ -540,23 +568,23 @@ export const TraceMap: React.FC<TraceMapProps> = ({
           )}
 
           {activePanel === 'analysis' && analysis && (
-            <div className="bg-white/95 backdrop-blur-2xl p-6 rounded-[2.5rem] shadow-2xl border border-purple-100 w-full animate-in slide-in-from-bottom-4 duration-300">
-               <div className="flex items-center justify-between mb-4 border-b border-purple-50 pb-3">
+            <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl p-6 rounded-[2.5rem] shadow-2xl border border-purple-100 dark:border-purple-900/30 w-full animate-in slide-in-from-bottom-4 duration-300">
+               <div className="flex items-center justify-between mb-4 border-b border-purple-50 dark:border-purple-900/20 pb-3">
                  <div className="flex items-center gap-2">
-                   <Sparkles className="w-4 h-4 text-purple-600" />
-                   <h4 className="text-[10px] font-black text-purple-600 uppercase tracking-widest">Cognitive Insights</h4>
+                   <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                   <h4 className="text-[10px] font-black text-purple-600 dark:text-purple-400 uppercase tracking-widest">Cognitive Insights</h4>
                  </div>
-                 <button onClick={() => setActivePanel('none')} className="text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 transition-colors">
+                 <button onClick={() => setActivePanel('none')} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                     <X className="w-4 h-4" />
                  </button>
                </div>
                <div className="space-y-4">
                   <div className="flex flex-col gap-1">
-                    <h3 className="text-lg font-black text-slate-800 leading-tight">
+                    <h3 className="text-lg font-black text-slate-800 dark:text-slate-100 leading-tight">
                       {analysis.vibe} Journey
                     </h3>
                   </div>
-                  <p className="text-[11px] text-slate-600 leading-relaxed font-medium bg-purple-50/40 p-4 rounded-2xl border border-purple-100/50 italic">
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed font-medium bg-purple-50/40 dark:bg-purple-900/20 p-4 rounded-2xl border border-purple-100/50 dark:border-purple-900/30 italic">
                     "{analysis.summary}"
                   </p>
                   
@@ -565,7 +593,7 @@ export const TraceMap: React.FC<TraceMapProps> = ({
                        <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Detected Waypoints</span>
                        <div className="flex flex-wrap gap-1.5">
                         {analysis.landmarks.map((l, i) => (
-                          <span key={i} className="px-2.5 py-1.5 bg-white text-purple-600 text-[9px] font-black uppercase rounded-xl border border-purple-100 shadow-sm">
+                          <span key={i} className="px-2.5 py-1.5 bg-white dark:bg-slate-800 text-purple-600 dark:text-purple-400 text-[9px] font-black uppercase rounded-xl border border-purple-100 dark:border-purple-900/30 shadow-sm">
                             {l}
                           </span>
                         ))}
@@ -577,17 +605,17 @@ export const TraceMap: React.FC<TraceMapProps> = ({
           )}
 
           {activePanel === 'layers' && (
-            <div className="bg-white/95 backdrop-blur-2xl p-5 rounded-[2rem] shadow-2xl border border-slate-100 w-full sm:w-72 animate-in slide-in-from-bottom-4 duration-300">
-               <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
+            <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl p-5 rounded-[2rem] shadow-2xl border border-slate-100 dark:border-slate-800 w-full sm:w-72 animate-in slide-in-from-bottom-4 duration-300">
+               <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-100 dark:border-slate-800">
                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Map Configuration</h4>
-                 <button onClick={() => setActivePanel('none')} className="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100 transition-colors">
+                 <button onClick={() => setActivePanel('none')} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                     <X className="w-3.5 h-3.5" />
                  </button>
                </div>
                
                <div className="space-y-6 max-h-[75vh] overflow-y-auto pr-2 custom-scrollbar">
                   <div>
-                    <h5 className="text-[9px] font-black text-slate-800 uppercase tracking-widest mb-3">Base Style</h5>
+                    <h5 className="text-[9px] font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest mb-3">Base Style</h5>
                     <div className="grid grid-cols-2 gap-2">
                       {baseLayerOptions.map(l => {
                         const Icon = l.icon;
@@ -599,7 +627,7 @@ export const TraceMap: React.FC<TraceMapProps> = ({
                              className={`flex flex-col items-center justify-center gap-2 p-3 rounded-2xl transition-all border ${
                                isActive 
                                  ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-500/20' 
-                                 : 'bg-slate-50 border-slate-100 text-slate-500 hover:bg-slate-50 hover:border-slate-200'
+                                 : 'bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-200 dark:hover:border-slate-600'
                              }`}
                            >
                              <Icon className="w-4 h-4" />
@@ -611,7 +639,7 @@ export const TraceMap: React.FC<TraceMapProps> = ({
                   </div>
 
                   <div>
-                    <h5 className="text-[9px] font-black text-slate-800 uppercase tracking-widest mb-3">Context Overlays</h5>
+                    <h5 className="text-[9px] font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest mb-3">Context Overlays</h5>
                     <div className="grid grid-cols-2 gap-2">
                        {overlayOptions.map(l => {
                           const Icon = l.icon;
@@ -623,10 +651,10 @@ export const TraceMap: React.FC<TraceMapProps> = ({
                                className={`flex items-center gap-3 p-3 rounded-xl transition-all border w-full text-left ${
                                  isActive 
                                    ? 'bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-500/20' 
-                                   : 'bg-slate-50 border-slate-100 text-slate-500 hover:bg-slate-100'
+                                   : 'bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
                                }`}
                              >
-                               <div className={`p-1.5 rounded-lg ${isActive ? 'bg-white/20' : 'bg-white border border-slate-100'}`}>
+                               <div className={`p-1.5 rounded-lg ${isActive ? 'bg-white/20' : 'bg-white dark:bg-slate-700 border border-slate-100 dark:border-slate-600'}`}>
                                  <Icon className="w-3.5 h-3.5" />
                                </div>
                                <span className="text-[9px] font-bold uppercase tracking-wide leading-tight">{l.name}</span>
@@ -640,27 +668,27 @@ export const TraceMap: React.FC<TraceMapProps> = ({
           )}
 
           {activePanel === 'legend' && (
-            <div className="bg-white/95 backdrop-blur-2xl p-5 rounded-[2rem] shadow-2xl border border-slate-100 w-full sm:w-64 animate-in slide-in-from-bottom-4 duration-300">
-               <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
+            <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl p-5 rounded-[2rem] shadow-2xl border border-slate-100 dark:border-slate-800 w-full sm:w-64 animate-in slide-in-from-bottom-4 duration-300">
+               <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-100 dark:border-slate-800">
                  <div className="flex items-center gap-2">
-                   <Info className="w-4 h-4 text-indigo-600" />
-                   <h4 className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Map Legend</h4>
+                   <Info className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                   <h4 className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">Map Legend</h4>
                  </div>
-                 <button onClick={() => setActivePanel('none')} className="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100 transition-colors">
+                 <button onClick={() => setActivePanel('none')} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                     <X className="w-3.5 h-3.5" />
                  </button>
                </div>
 
                <div className="space-y-4">
                   <div>
-                     <h5 className="text-[9px] font-black text-slate-800 uppercase tracking-widest mb-3">Journey Paths</h5>
+                     <h5 className="text-[9px] font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest mb-3">Journey Paths</h5>
                      <div className="space-y-3">
                         <div className="flex items-center justify-between">
-                           <span className="text-[10px] font-medium text-slate-600">Recorded Path</span>
+                           <span className="text-[10px] font-medium text-slate-600 dark:text-slate-400">Recorded Path</span>
                            <div className="w-8 h-1 bg-blue-500 rounded-full opacity-80"></div>
                         </div>
                         <div className="flex items-center justify-between">
-                           <span className="text-[10px] font-medium text-slate-600">Planned Route</span>
+                           <span className="text-[10px] font-medium text-slate-600 dark:text-slate-400">Planned Route</span>
                            <div className="w-8 h-1 border-b-2 border-amber-500 border-dashed opacity-60"></div>
                         </div>
                      </div>
@@ -668,7 +696,7 @@ export const TraceMap: React.FC<TraceMapProps> = ({
 
                   {activeOverlays.size > 0 && (
                      <div>
-                        <h5 className="text-[9px] font-black text-slate-800 uppercase tracking-widest mb-3 border-t border-slate-100 pt-3">Active Layers</h5>
+                        <h5 className="text-[9px] font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest mb-3 border-t border-slate-100 dark:border-slate-800 pt-3">Active Layers</h5>
                         <div className="space-y-3">
                            {Array.from(activeOverlays).map(id => {
                               const overlay = overlayOptions.find(o => o.id === id);
@@ -676,9 +704,9 @@ export const TraceMap: React.FC<TraceMapProps> = ({
                               const Icon = overlay.icon;
                               return (
                                  <div key={id} className="flex items-center justify-between">
-                                    <span className="text-[10px] font-medium text-slate-600">{overlay.name}</span>
-                                    <div className="p-1 bg-emerald-50 rounded-md border border-emerald-100">
-                                       <Icon className="w-3.5 h-3.5 text-emerald-600" />
+                                    <span className="text-[10px] font-medium text-slate-600 dark:text-slate-400">{overlay.name}</span>
+                                    <div className="p-1 bg-emerald-50 dark:bg-emerald-900/20 rounded-md border border-emerald-100 dark:border-emerald-900/30">
+                                       <Icon className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                                     </div>
                                  </div>
                               );

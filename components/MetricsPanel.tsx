@@ -9,7 +9,7 @@ interface MetricsPanelProps {
 
 export const MetricsPanel: React.FC<MetricsPanelProps> = ({ stats }) => {
   return (
-    <section className="space-y-4">
+    <section className="space-y-4 pb-8">
       <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest">Journey Metrics</h2>
       <div className="grid grid-cols-2 gap-4">
          {[

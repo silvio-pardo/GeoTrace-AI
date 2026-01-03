@@ -12,6 +12,8 @@ import { analyzeTrace } from './services/geminiService';
 import { offlineMapService } from './services/offlineMapService';
 import { traceStorageService } from './services/traceStorageService';
 import { Coordinate, TraceStats, AppState, AIAnalysis, SavedTrace } from './types';
+import { Capacitor } from '@capacitor/core';
+import { Geolocation } from '@capacitor/geolocation';
 
 // Helper to calculate distance in meters using Haversine formula
 const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -401,40 +403,85 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
-  const startRecording = useCallback(() => {
-    if (!navigator.geolocation) {
-      setErrorMessage("Geolocation is not supported by your browser");
-      return;
+  const startRecording = useCallback(async () => {
+    // Check permissions first
+    if (Capacitor.isNativePlatform()) {
+      const permission = await Geolocation.checkPermissions();
+      if (permission.location !== 'granted') {
+        const request = await Geolocation.requestPermissions();
+        if (request.location !== 'granted') {
+          setErrorMessage("Location permission denied");
+          return;
+        }
+      }
+    } else {
+      // Web fallback
+      if (!navigator.geolocation) {
+        setErrorMessage("Geolocation is not supported by your browser");
+        return;
+      }
     }
 
     setCoordinates([]);
     setAnalysis(null);
     setAppState(AppState.RECORDING);
 
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      (position) => {
-        const newCoord: Coordinate = {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-          alt: position.coords.altitude || 0,
-          timestamp: position.timestamp,
-          speed: position.coords.speed || 0,
-          heading: position.coords.heading || null,
-          accuracy: position.coords.accuracy
-        };
-        setCoordinates(prev => [...prev, newCoord]);
-      },
-      (error) => {
-        console.error("Geolocation Error:", error);
-        setErrorMessage(`Recording failed: ${error.message} (Code ${error.code})`);
-      },
-      { enableHighAccuracy: true, maximumAge: 0 }
-    );
+    if (Capacitor.isNativePlatform()) {
+      const watchId = await Geolocation.watchPosition({ enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }, (position, err) => {
+        if (err) {
+          console.error("Geolocation Error:", err);
+          setErrorMessage(`Recording failed: ${err.message}`);
+          return;
+        }
+        if (position) {
+          const newCoord: Coordinate = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+            alt: position.coords.altitude || 0,
+            timestamp: position.timestamp,
+            speed: position.coords.speed || 0,
+            heading: position.coords.heading || null,
+            accuracy: position.coords.accuracy
+          };
+          setCoordinates(prev => [...prev, newCoord]);
+        }
+      });
+      // Store watchId somehow. The Capacitor watchPosition returns a promise that resolves to a CallbackID (string).
+      // But watchIdRef is number | null. We need to adapt.
+      // For now, let's just cast it or change the ref type if possible, but I can't change types.ts easily without reading it.
+      // Actually, I can just store it in a separate ref or cast it.
+      // Let's assume I can store it in a separate ref or just use `any`.
+      (watchIdRef as any).current = watchId;
+    } else {
+      watchIdRef.current = navigator.geolocation.watchPosition(
+        (position) => {
+          const newCoord: Coordinate = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+            alt: position.coords.altitude || 0,
+            timestamp: position.timestamp,
+            speed: position.coords.speed || 0,
+            heading: position.coords.heading || null,
+            accuracy: position.coords.accuracy
+          };
+          setCoordinates(prev => [...prev, newCoord]);
+        },
+        (error) => {
+          console.error("Geolocation Error:", error);
+          setErrorMessage(`Recording failed: ${error.message} (Code ${error.code})`);
+        },
+        { enableHighAccuracy: true, maximumAge: 0 }
+      );
+    }
   }, []);
 
-  const stopRecording = useCallback(() => {
+  const stopRecording = useCallback(async () => {
     if (watchIdRef.current !== null) {
-      navigator.geolocation.clearWatch(watchIdRef.current);
+      if (Capacitor.isNativePlatform()) {
+         await Geolocation.clearWatch({ id: (watchIdRef as any).current });
+      } else {
+         navigator.geolocation.clearWatch(watchIdRef.current);
+      }
       watchIdRef.current = null;
     }
     if (simulationIntervalRef.current !== null) {
@@ -508,7 +555,7 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen w-full bg-slate-50 font-sans text-slate-900 overflow-hidden relative">
+    <div className="flex h-screen w-full bg-slate-50 dark:bg-slate-900 font-sans text-slate-900 dark:text-slate-50 overflow-hidden relative pt-safe-top pb-safe-bottom pl-safe-left pr-safe-right">
       
       <Sidebar 
         isOpen={isSidebarOpen} 
@@ -548,7 +595,7 @@ export default function App() {
 
       {/* Main Map Content */}
       <main className="flex-1 flex flex-col relative h-full group">
-        <div className="flex-1 bg-slate-100 relative overflow-hidden">
+        <div className="flex-1 bg-slate-100 dark:bg-slate-800 relative overflow-hidden">
           <TraceMap 
             coordinates={coordinates} 
             plannedPath={plannedPath} 
@@ -588,7 +635,7 @@ export default function App() {
              {navState.isActive ? (
                 <NavigationOverlay navState={navState} isVisible={true} />
              ) : (
-                <div className={`w-full max-w-4xl backdrop-blur-xl bg-white/80 rounded-[2rem] shadow-2xl border border-white/50 overflow-hidden transition-all duration-500 ${isChartCollapsed ? 'p-1.5 px-6' : 'p-6'} pointer-events-auto`}>
+                <div className={`w-full max-w-4xl backdrop-blur-xl bg-white/80 dark:bg-slate-900/80 rounded-[2rem] shadow-2xl border border-white/50 dark:border-slate-700/50 overflow-hidden transition-all duration-500 ${isChartCollapsed ? 'p-1.5 px-6' : 'p-6'} pointer-events-auto`}>
                    <StatsChart 
                      data={coordinates} 
                      isCollapsed={isChartCollapsed} 

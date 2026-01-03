@@ -10,9 +10,9 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, isOnline, onClose, children }) => {
   return (
-    <aside className={`fixed md:relative z-[2000] h-full transition-all duration-300 ease-in-out shadow-2xl border-r border-slate-200 bg-white flex flex-col ${isOpen ? 'w-full md:w-[420px]' : 'w-0 -translate-x-full md:translate-x-0 md:w-0 overflow-hidden'}`}>
+    <aside className={`fixed md:relative z-[2000] h-full transition-all duration-300 ease-in-out shadow-2xl border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 flex flex-col ${isOpen ? 'w-full md:w-[420px]' : 'w-0 -translate-x-full md:translate-x-0 md:w-0 overflow-hidden'}`}>
       
-      <div className="p-8 bg-gradient-to-br from-slate-900 to-slate-800 text-white relative overflow-hidden flex-shrink-0">
+      <div className="p-8 bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-950 dark:to-slate-900 text-white relative overflow-hidden flex-shrink-0">
         <div className="relative z-10">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -39,7 +39,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, isOnline, onClose, chi
         <div className="absolute top-[-20%] right-[-10%] w-48 h-48 bg-blue-500/10 rounded-full blur-3xl"></div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-hide">
+      <div className="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-hide bg-white dark:bg-slate-900">
         {children}
       </div>
     </aside>
