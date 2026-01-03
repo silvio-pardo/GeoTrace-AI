@@ -13,16 +13,6 @@ import { offlineMapService } from './services/offlineMapService';
 import { traceStorageService } from './services/traceStorageService';
 import { Coordinate, TraceStats, AppState, AIAnalysis, SavedTrace } from './types';
 
-const INITIAL_DEMO_TRACE: Coordinate[] = [
-  { lat: 37.7749, lng: -122.4194, timestamp: Date.now() - 600000, speed: 2.5, alt: 10 },
-  { lat: 37.7758, lng: -122.4205, timestamp: Date.now() - 500000, speed: 3.2, alt: 12 },
-  { lat: 37.7765, lng: -122.4220, timestamp: Date.now() - 400000, speed: 4.1, alt: 15 },
-  { lat: 37.7772, lng: -122.4238, timestamp: Date.now() - 300000, speed: 3.8, alt: 14 },
-  { lat: 37.7785, lng: -122.4255, timestamp: Date.now() - 200000, speed: 5.2, alt: 18 },
-  { lat: 37.7798, lng: -122.4278, timestamp: Date.now() - 100000, speed: 4.5, alt: 22 },
-  { lat: 37.7812, lng: -122.4302, timestamp: Date.now(), speed: 4.0, alt: 25 },
-];
-
 // Helper to calculate distance in meters using Haversine formula
 const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
   const R = 6371e3;
@@ -36,7 +26,7 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
 };
 
 export default function App() {
-  const [coordinates, setCoordinates] = useState<Coordinate[]>(INITIAL_DEMO_TRACE);
+  const [coordinates, setCoordinates] = useState<Coordinate[]>([]);
   const [plannedPath, setPlannedPath] = useState<Coordinate[]>([]);
   const [appState, setAppState] = useState<AppState>(AppState.IDLE);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
