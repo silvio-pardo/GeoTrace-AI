@@ -377,7 +377,7 @@ export default function App() {
     );
   }, []);
 
-  const stopRecording = useCallback(async () => {
+  const stopRecording = useCallback(() => {
     if (watchIdRef.current !== null) {
       navigator.geolocation.clearWatch(watchIdRef.current);
       watchIdRef.current = null;
@@ -386,6 +386,11 @@ export default function App() {
       window.clearInterval(simulationIntervalRef.current);
       simulationIntervalRef.current = null;
     }
+    setAppState(AppState.VIEWING);
+  }, []);
+
+  const handleGenerateAnalysis = useCallback(async () => {
+    if (coordinates.length === 0) return;
     
     setAppState(AppState.ANALYZING);
     try {
@@ -393,6 +398,7 @@ export default function App() {
       setAnalysis(result);
     } catch (e) {
       console.error(e);
+      setErrorMessage("Failed to generate analysis");
     } finally {
       setAppState(AppState.VIEWING);
     }
@@ -458,6 +464,8 @@ export default function App() {
           onStopRecording={stopRecording}
           onStartSimulation={startSimulation}
           onReset={() => {setCoordinates([]); setAnalysis(null); setAppState(AppState.IDLE);}}
+          onGenerateAnalysis={handleGenerateAnalysis}
+          hasAnalysis={!!analysis}
         />
 
         <TraceLibrary 
