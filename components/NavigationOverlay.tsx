@@ -1,5 +1,5 @@
 import React from 'react';
-import { Navigation, AlertTriangle, Flag, Clock, ArrowRight } from 'lucide-react';
+import { Navigation, AlertTriangle, Flag, Clock, ArrowRight, CornerUpRight } from 'lucide-react';
 import { formatDistance, formatTime } from '../utils/formatters';
 
 export interface NavigationState {
@@ -8,6 +8,7 @@ export interface NavigationState {
   distanceToRoute: number; // meters
   distanceToFinish: number; // meters
   estimatedDuration: number; // seconds
+  distanceToNextTurn?: number; // meters
 }
 
 interface NavigationOverlayProps {
@@ -19,7 +20,7 @@ export const NavigationOverlay: React.FC<NavigationOverlayProps> = ({ navState, 
   if (!isVisible || !navState.isActive) return null;
 
   return (
-    <div className="w-full max-w-sm px-4 pointer-events-auto animate-in slide-in-from-bottom duration-500">
+    <div className="w-full max-w-md px-4 pointer-events-auto animate-in slide-in-from-bottom duration-500">
       <div className={`backdrop-blur-xl rounded-3xl shadow-2xl border-2 overflow-hidden ${
         navState.isOnTrack 
           ? 'bg-emerald-900/80 border-emerald-500/50 text-white' 
@@ -46,7 +47,7 @@ export const NavigationOverlay: React.FC<NavigationOverlayProps> = ({ navState, 
               <span className="text-xs font-bold">
                 {navState.distanceToRoute >= 1000 
                   ? formatDistance(navState.distanceToRoute) 
-                  : `${navState.distanceToRoute.toFixed(2)} m`} off track
+                  : `${navState.distanceToRoute.toFixed(0)} m`} off track
               </span>
               <ArrowRight className="w-3.5 h-3.5" />
             </div>
@@ -55,26 +56,45 @@ export const NavigationOverlay: React.FC<NavigationOverlayProps> = ({ navState, 
 
         {/* Main Metrics */}
         <div className="p-5 flex items-center justify-between">
-          <div className="flex flex-col gap-1">
+          
+          {/* Next Turn (Only if On Track and detected) */}
+          {navState.isOnTrack && navState.distanceToNextTurn !== undefined && (
+             <>
+               <div className="flex flex-col gap-1 flex-1 min-w-0">
+                 <div className="flex items-center gap-1.5 text-white/60">
+                   <CornerUpRight className="w-3.5 h-3.5" />
+                   <span className="text-[9px] font-black uppercase tracking-widest whitespace-nowrap">Next Turn</span>
+                 </div>
+                 <span className="text-2xl font-black tracking-tight tabular-nums truncate">
+                   {navState.distanceToNextTurn >= 1000 
+                     ? formatDistance(navState.distanceToNextTurn) 
+                     : `${navState.distanceToNextTurn.toFixed(0)} m`}
+                 </span>
+               </div>
+               <div className="w-[1px] h-10 bg-white/10 mx-4"></div>
+             </>
+          )}
+
+          <div className="flex flex-col gap-1 flex-1 min-w-0">
             <div className="flex items-center gap-1.5 text-white/60">
               <Flag className="w-3.5 h-3.5" />
-              <span className="text-[9px] font-black uppercase tracking-widest">Remaining</span>
+              <span className="text-[9px] font-black uppercase tracking-widest whitespace-nowrap">Remaining</span>
             </div>
-            <span className="text-2xl font-black tracking-tight tabular-nums">
+            <span className="text-2xl font-black tracking-tight tabular-nums truncate">
               {navState.distanceToFinish >= 1000 
                 ? formatDistance(navState.distanceToFinish) 
-                : `${navState.distanceToFinish.toFixed(2)} m`}
+                : `${navState.distanceToFinish.toFixed(0)} m`}
             </span>
           </div>
 
-          <div className="w-[1px] h-10 bg-white/10"></div>
+          <div className="w-[1px] h-10 bg-white/10 mx-4"></div>
 
-          <div className="flex flex-col gap-1 items-end">
+          <div className="flex flex-col gap-1 items-end flex-1 min-w-0">
              <div className="flex items-center gap-1.5 text-white/60">
-              <span className="text-[9px] font-black uppercase tracking-widest">Est. Time</span>
+              <span className="text-[9px] font-black uppercase tracking-widest whitespace-nowrap">Est. Time</span>
               <Clock className="w-3.5 h-3.5" />
             </div>
-            <span className="text-2xl font-black tracking-tight tabular-nums">
+            <span className="text-2xl font-black tracking-tight tabular-nums truncate">
               {navState.estimatedDuration > 0 ? formatTime(navState.estimatedDuration) : '--:--'}
             </span>
           </div>

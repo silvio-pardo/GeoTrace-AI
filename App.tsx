@@ -25,6 +25,18 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c;
 };
 
+// Helper to calculate bearing between two points
+const calculateBearing = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+  const toRad = (deg: number) => deg * Math.PI / 180;
+  const toDeg = (rad: number) => rad * 180 / Math.PI;
+  
+  const y = Math.sin(toRad(lon2 - lon1)) * Math.cos(toRad(lat2));
+  const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
+            Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(toRad(lon2 - lon1));
+  const brng = toDeg(Math.atan2(y, x));
+  return (brng + 360) % 360;
+};
+
 export default function App() {
   const [coordinates, setCoordinates] = useState<Coordinate[]>([]);
   const [plannedPath, setPlannedPath] = useState<Coordinate[]>([]);
@@ -42,7 +54,8 @@ export default function App() {
     isOnTrack: true,
     distanceToRoute: 0,
     distanceToFinish: 0,
-    estimatedDuration: 0
+    estimatedDuration: 0,
+    distanceToNextTurn: undefined
   });
 
   // Storage State
@@ -124,6 +137,41 @@ export default function App() {
     // Determine if on track (threshold: 40 meters)
     const isOnTrack = minDistance <= 40;
     
+    // Detect next turn logic
+    let distanceToNextTurn: number | undefined = undefined;
+    
+    if (isOnTrack && closestIndex < plannedPath.length - 5) {
+      const lookAheadPoints = 3; // Smoothing window
+      const p1 = plannedPath[closestIndex];
+      const p2 = plannedPath[Math.min(closestIndex + lookAheadPoints, plannedPath.length - 1)];
+      const currentBearing = calculateBearing(p1.lat, p1.lng, p2.lat, p2.lng);
+      
+      let distAccumulator = 0;
+      
+      // Look ahead up to 500 points or end of path
+      for (let i = closestIndex; i < Math.min(closestIndex + 500, plannedPath.length - lookAheadPoints - 1); i++) {
+        const startNode = plannedPath[i];
+        const endNode = plannedPath[i+1];
+        distAccumulator += calculateDistance(startNode.lat, startNode.lng, endNode.lat, endNode.lng);
+        
+        // Skip check for very short accumulation to avoid noise near start
+        if (distAccumulator < 20) continue;
+
+        const f1 = plannedPath[i];
+        const f2 = plannedPath[i + lookAheadPoints];
+        const futureBearing = calculateBearing(f1.lat, f1.lng, f2.lat, f2.lng);
+        
+        let diff = Math.abs(futureBearing - currentBearing);
+        if (diff > 180) diff = 360 - diff;
+        
+        // If heading changes by > 35 degrees, assume it's a turn
+        if (diff > 35) {
+          distanceToNextTurn = distAccumulator;
+          break;
+        }
+      }
+    }
+
     // Estimate time based on current speed or average walking speed (5km/h ~ 1.4m/s)
     const currentSpeed = currentPos.speed || 1.4;
     const estimatedDuration = currentSpeed > 0.1 ? remainingDistance / currentSpeed : remainingDistance / 1.4;
@@ -133,7 +181,8 @@ export default function App() {
       isOnTrack,
       distanceToRoute: minDistance,
       distanceToFinish: remainingDistance,
-      estimatedDuration
+      estimatedDuration,
+      distanceToNextTurn
     });
 
   }, [coordinates, plannedPath, appState]);
