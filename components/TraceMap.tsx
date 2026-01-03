@@ -665,6 +665,27 @@ export const TraceMap: React.FC<TraceMapProps> = ({
                         </div>
                      </div>
                   </div>
+
+                  {activeOverlays.size > 0 && (
+                     <div>
+                        <h5 className="text-[9px] font-black text-slate-800 uppercase tracking-widest mb-3 border-t border-slate-100 pt-3">Active Layers</h5>
+                        <div className="space-y-3">
+                           {Array.from(activeOverlays).map(id => {
+                              const overlay = overlayOptions.find(o => o.id === id);
+                              if (!overlay) return null;
+                              const Icon = overlay.icon;
+                              return (
+                                 <div key={id} className="flex items-center justify-between">
+                                    <span className="text-[10px] font-medium text-slate-600">{overlay.name}</span>
+                                    <div className="p-1 bg-emerald-50 rounded-md border border-emerald-100">
+                                       <Icon className="w-3.5 h-3.5 text-emerald-600" />
+                                    </div>
+                                 </div>
+                              );
+                           })}
+                        </div>
+                     </div>
+                  )}
                </div>
             </div>
           )}
