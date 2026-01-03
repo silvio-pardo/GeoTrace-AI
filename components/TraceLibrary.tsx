@@ -6,6 +6,7 @@ import { formatDistance } from '../utils/formatters';
 interface TraceLibraryProps {
   savedTraces: SavedTrace[];
   hasCoordinates: boolean;
+  hasReferenceTrace: boolean;
   isSaveModalOpen: boolean;
   setIsSaveModalOpen: (isOpen: boolean) => void;
   traceName: string;
@@ -17,11 +18,13 @@ interface TraceLibraryProps {
   onImportGPX: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onLoadReferenceLayer: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onExportGPX: () => void;
+  onClearReferenceTrace: () => void;
 }
 
 export const TraceLibrary: React.FC<TraceLibraryProps> = ({
   savedTraces,
   hasCoordinates,
+  hasReferenceTrace,
   isSaveModalOpen,
   setIsSaveModalOpen,
   traceName,
@@ -32,7 +35,8 @@ export const TraceLibrary: React.FC<TraceLibraryProps> = ({
   onLoadReferenceTrace,
   onImportGPX,
   onLoadReferenceLayer,
-  onExportGPX
+  onExportGPX,
+  onClearReferenceTrace
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importTraceInputRef = useRef<HTMLInputElement>(null);
@@ -110,14 +114,26 @@ export const TraceLibrary: React.FC<TraceLibraryProps> = ({
               </button>
             </div>
 
-            <input type="file" accept=".gpx" className="hidden" ref={fileInputRef} onChange={onLoadReferenceLayer} />
-            <button 
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full flex items-center justify-center gap-2 bg-white hover:bg-slate-50 text-slate-400 hover:text-slate-600 py-2 rounded-xl text-[10px] font-bold transition-all border border-dashed border-slate-200"
-            >
-              <Layers className="w-3 h-3" />
-              Load Reference Layer
-            </button>
+            {hasReferenceTrace ? (
+              <button 
+                onClick={onClearReferenceTrace}
+                className="w-full flex items-center justify-center gap-2 bg-amber-50 hover:bg-amber-100 text-amber-600 hover:text-amber-700 py-2 rounded-xl text-[10px] font-bold transition-all border border-amber-100"
+              >
+                <Trash2 className="w-3 h-3" />
+                Clear Reference Layer
+              </button>
+            ) : (
+              <>
+                <input type="file" accept=".gpx" className="hidden" ref={fileInputRef} onChange={onLoadReferenceLayer} />
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full flex items-center justify-center gap-2 bg-white hover:bg-slate-50 text-slate-400 hover:text-slate-600 py-2 rounded-xl text-[10px] font-bold transition-all border border-dashed border-slate-200"
+                >
+                  <Layers className="w-3 h-3" />
+                  Load Reference Layer
+                </button>
+              </>
+            )}
           </div>
           
           {/* Saved List */}

@@ -312,6 +312,10 @@ export default function App() {
     setPlannedPath(trace.coordinates);
     setIsSidebarOpen(false);
   };
+  
+  const handleClearReferenceTrace = () => {
+    setPlannedPath([]);
+  };
 
   const exportToGPX = () => {
     if (coordinates.length === 0) {
@@ -475,6 +479,7 @@ export default function App() {
         <TraceLibrary 
           savedTraces={savedTraces}
           hasCoordinates={coordinates.length > 0}
+          hasReferenceTrace={plannedPath.length > 0}
           isSaveModalOpen={isSaveModalOpen}
           setIsSaveModalOpen={setIsSaveModalOpen}
           traceName={traceName}
@@ -486,6 +491,7 @@ export default function App() {
           onImportGPX={handleImportTrace}
           onLoadReferenceLayer={handleFileUpload}
           onExportGPX={exportToGPX}
+          onClearReferenceTrace={handleClearReferenceTrace}
         />
 
         <MetricsPanel stats={stats} />
