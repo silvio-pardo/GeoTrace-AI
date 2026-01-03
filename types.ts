@@ -6,6 +6,7 @@ export interface Coordinate {
   timestamp: number;
   speed?: number;
   heading?: number | null;
+  accuracy?: number;
 }
 
 export interface TraceStats {

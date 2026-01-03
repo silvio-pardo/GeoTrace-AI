@@ -366,7 +366,8 @@ export default function App() {
           alt: position.coords.altitude || 0,
           timestamp: position.timestamp,
           speed: position.coords.speed || 0,
-          heading: position.coords.heading || null
+          heading: position.coords.heading || null,
+          accuracy: position.coords.accuracy
         };
         setCoordinates(prev => [...prev, newCoord]);
       },
@@ -426,7 +427,8 @@ export default function App() {
         timestamp: Date.now(),
         speed: speed * 50000, 
         alt: 10 + Math.random() * 5,
-        heading: (angle * 180 / Math.PI) // Simulate heading
+        heading: (angle * 180 / Math.PI), // Simulate heading
+        accuracy: 4 + Math.random() * 3 // Simulate accuracy between 4-7m
       };
       setCoordinates(prev => [...prev, newCoord]);
     }, 1000);
@@ -522,6 +524,7 @@ export default function App() {
             speed={coordinates[coordinates.length-1]?.speed || 0}
             altitude={coordinates[coordinates.length-1]?.alt || 0}
             distance={stats.totalDistance}
+            accuracy={coordinates[coordinates.length-1]?.accuracy}
             isSidebarOpen={isSidebarOpen}
           />
           

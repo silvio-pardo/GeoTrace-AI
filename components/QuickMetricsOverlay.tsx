@@ -1,5 +1,5 @@
 import React from 'react';
-import { TrendingUp, Mountain, Navigation } from 'lucide-react';
+import { TrendingUp, Mountain, Navigation, Target } from 'lucide-react';
 
 interface QuickMetricsOverlayProps {
   isVisible: boolean;
@@ -8,6 +8,7 @@ interface QuickMetricsOverlayProps {
   speed: number;
   altitude: number;
   distance: number;
+  accuracy?: number;
   isSidebarOpen: boolean;
 }
 
@@ -18,6 +19,7 @@ export const QuickMetricsOverlay: React.FC<QuickMetricsOverlayProps> = ({
   speed,
   altitude,
   distance,
+  accuracy,
   isSidebarOpen
 }) => {
   if (!isVisible) return null;
@@ -28,17 +30,8 @@ export const QuickMetricsOverlay: React.FC<QuickMetricsOverlayProps> = ({
     >
        <div className="w-full bg-white/90 backdrop-blur-md px-5 py-2.5 rounded-2xl shadow-xl border border-white/50 flex items-center justify-between gap-4 pointer-events-auto">
           
-          {isRecording && (
-            <div className="flex items-center justify-center pr-4 border-r border-slate-200/80 shrink-0">
-              <div className="relative">
-                <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-ping absolute"></div>
-                <div className="w-2.5 h-2.5 bg-red-600 rounded-full relative"></div>
-              </div>
-            </div>
-          )}
-
           <div className="flex-1 flex items-center justify-around">
-            <div className="flex flex-col items-center min-w-[4rem]">
+            <div className="flex flex-col items-center w-16">
               <div className="flex items-center gap-1.5 mb-0.5">
                 <TrendingUp className="w-3 h-3 text-blue-500" />
                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Speed</span>
@@ -50,7 +43,7 @@ export const QuickMetricsOverlay: React.FC<QuickMetricsOverlayProps> = ({
             
             <div className="w-[1px] h-8 bg-slate-200 mx-2"></div>
             
-            <div className="flex flex-col items-center min-w-[4rem]">
+            <div className="flex flex-col items-center w-20">
               <div className="flex items-center gap-1.5 mb-0.5">
                 <Mountain className="w-3 h-3 text-emerald-500" />
                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Altitude</span>
@@ -62,13 +55,25 @@ export const QuickMetricsOverlay: React.FC<QuickMetricsOverlayProps> = ({
             
             <div className="w-[1px] h-8 bg-slate-200 mx-2"></div>
             
-            <div className="flex flex-col items-center min-w-[4rem]">
+            <div className="flex flex-col items-center w-20">
               <div className="flex items-center gap-1.5 mb-0.5">
                 <Navigation className="w-3 h-3 text-indigo-500" />
                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Distance</span>
               </div>
               <span className="text-base font-black text-slate-800 tabular-nums whitespace-nowrap">
                 {distance >= 1000 ? (distance / 1000).toFixed(2) : Math.round(distance)} <span className="text-[10px] text-slate-400 font-medium">{distance >= 1000 ? 'km' : 'm'}</span>
+              </span>
+            </div>
+
+            <div className="w-[1px] h-8 bg-slate-200 mx-2"></div>
+            
+            <div className="flex flex-col items-center w-12">
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <Target className="w-3 h-3 text-orange-500" />
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">GPS</span>
+              </div>
+              <span className="text-base font-black text-slate-800 tabular-nums whitespace-nowrap">
+                {accuracy !== undefined && accuracy !== null ? `±${Math.round(accuracy)}` : '--'} <span className="text-[10px] text-slate-400 font-medium">m</span>
               </span>
             </div>
           </div>
