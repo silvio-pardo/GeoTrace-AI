@@ -61,7 +61,9 @@ export const NavigationOverlay: React.FC<NavigationOverlayProps> = ({ navState, 
               <span className="text-[9px] font-black uppercase tracking-widest">Remaining</span>
             </div>
             <span className="text-2xl font-black tracking-tight tabular-nums">
-              {formatDistance(navState.distanceToFinish)}
+              {navState.distanceToFinish >= 1000 
+                ? formatDistance(navState.distanceToFinish) 
+                : `${navState.distanceToFinish.toFixed(2)} m`}
             </span>
           </div>
 
