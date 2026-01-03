@@ -292,7 +292,7 @@ export const TraceMap: React.FC<TraceMapProps> = ({
     <div className="h-full w-full relative group/map">
       <MapContainer 
         center={center} 
-        zoom={15} 
+        zoom={2} 
         scrollWheelZoom={true} 
         zoomControl={false}
         style={{ height: '100%', width: '100%' }}

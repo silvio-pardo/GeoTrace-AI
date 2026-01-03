@@ -14,7 +14,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, isOnline, onClose, chi
       
       <div className="p-8 bg-gradient-to-br from-slate-900 to-slate-800 text-white relative overflow-hidden flex-shrink-0">
         <div className="relative z-10">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-blue-500 rounded-xl shadow-lg shadow-blue-500/30">
                 <Activity className="w-6 h-6 text-white" />
@@ -35,9 +35,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, isOnline, onClose, chi
               </button>
             </div>
           </div>
-          <p className="text-slate-400 text-sm leading-relaxed max-w-[280px]">
-            Visualizing the journey with intelligence.
-          </p>
         </div>
         <div className="absolute top-[-20%] right-[-10%] w-48 h-48 bg-blue-500/10 rounded-full blur-3xl"></div>
       </div>
